@@ -12,12 +12,14 @@ void createSmallPhobia(bool image[WIDTH][HEIGHT])
   createImageMiddle(image, images, 6, 1);
 }
 
+/*
 void createLargePhobia(bool image[WIDTH][HEIGHT]) 
 {
   using namespace Font4x7;
   TImage images[] = {Letter_P, Letter_H, Letter_O, Letter_B, Letter_I, Letter_A};
   createImageMiddle(image, images, 6, 1);
 }
+*/
 
 void createHotel(bool image[WIDTH][HEIGHT]) 
 {
@@ -46,16 +48,38 @@ void createSpecial(bool image[WIDTH][HEIGHT])
   createImageMiddle(image, images, 5, 1);
 }
 
-void createDigits(bool image[WIDTH][HEIGHT], char* digits, int size)
+void createDigits(bool image[WIDTH][HEIGHT], int* digits, int size)
 {
   using namespace Font4x7;
   TImage images[10];
 
-  for (int i = 0; i < size; ++i) {
-    images[i] = GetImage(digits[i]);
+  int delta = 0;
+  int imagesSize = size + 1;
+  if (size < 3) {
+    imagesSize = 4;
+    delta = imagesSize - size - 1;
+    images[0] = GetImage('0');
   }
 
-  createImageRight(image, images, size);
+  if (size < 2) {
+    images[2] = GetImage('0');
+  }
+
+  if (size < 1) {
+    images[3] = GetImage('0');
+  }
+  
+  images[imagesSize - 3] = Point;
+  
+  for (int i = 0; i < size; ++i) {    
+    int imageIndex = delta + i;
+    if (imageIndex >= imagesSize - 3) {
+      ++imageIndex;
+    }
+    images[imageIndex] = GetImage('0' + digits[i]);
+  }
+
+  createImageRight(image, images, imagesSize);
 }
 
 /////////////////////////////////////////////////////////////

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SoftwareSerial.h>
+#include "image_parts.h"
 
 #define WIDTH 28
 #define HEIGHT 7
@@ -21,6 +22,23 @@ bool DelayImpl(unsigned long delta, volatile bool* flag)
   }  
 }
 
+
+/////////////////////////////////////////////////////////////
+
+void printToSerial(bool image[WIDTH][HEIGHT])
+{
+  for (int j = 0; j < HEIGHT; ++j) {
+    for (int i = 0; i < WIDTH; ++i) {
+      if (image[i][j] == 0) {
+        Serial.print(' ');
+      } else {
+        Serial.print('*');
+      }
+    }
+    Serial.println();
+  }
+}
+
 /////////////////////////////////////////////////////////////
 
 void cleanImage(bool data[WIDTH][HEIGHT])
@@ -37,7 +55,7 @@ void createImageImpl(bool data[WIDTH][HEIGHT], TImage images[], int imageCount, 
   cleanImage(data);
   
   int sumWidth = (imageCount - 1) * distance;
-  for (int i = 0; i < imageCount; ++i) {
+  for (int i = 0; i < imageCount; ++i) {   
     sumWidth += images[i].Width;
   }
 
@@ -99,20 +117,11 @@ struct TDot
 class TFlipDotDisplay
 {
 public:
-  TFlipDotDisplay(int txPin)
+  TFlipDotDisplay(int txPin, volatile bool* interrupt = NULL)
     : Serial_(30, txPin)
+    , Interrupt_(interrupt)
   {
     Serial_.begin(9600); 
-  }
-
-  void FireInterrupt()
-  {
-    Interrupt_ = true;
-  }
-
-  void ResetInterrupt()
-  {
-    Interrupt_ = false;
   }
 
   void SetImage(bool image[WIDTH][HEIGHT])
@@ -129,6 +138,11 @@ public:
   {
     cleanImage(Data_);
     DoUpdate();
+  }
+
+  void PrintToSerial()
+  {
+    printToSerial(Data_);
   }
 
   void Shuffle(int shuffleTime = 5000, int stepTime = 100, int flipsPerStep = 3)
@@ -159,8 +173,6 @@ public:
         }
       }
     }
-
-    Serial.println("Bad dots counted");
   
     while (badDotCount > 0) {
       int stepDotCount = 0;
@@ -175,7 +187,6 @@ public:
       }
   
       DoUpdate();
-      Serial.println("step...");
       
       if (!Delay(stepTime))
         return;
@@ -269,6 +280,7 @@ public:
     }
   }
 
+  /*
   void OuterArrows(bool image[WIDTH][HEIGHT], int stepTime = 100)
   {
     const int arrowWidth = HEIGHT / 2 + 1;
@@ -374,12 +386,13 @@ public:
         return;
     }
   }
+  */
   
 private:  
   bool Data_[WIDTH][HEIGHT];
   SoftwareSerial Serial_;
 
-  volatile bool Interrupt_ = true;
+  volatile bool* Interrupt_;
 
   void CopyColumn(bool image[WIDTH][HEIGHT], int column)
   {
@@ -390,11 +403,11 @@ private:
 
   bool Delay(unsigned long delta)
   {
-    if (Interrupt_) {
+    if (*Interrupt_) {
       delay(delta);
       return true;
     } else {
-      return DelayImpl(delta, &Interrupt_);
+      return DelayImpl(delta, Interrupt_);
     }
   }
 

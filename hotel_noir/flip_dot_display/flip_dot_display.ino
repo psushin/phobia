@@ -1,52 +1,132 @@
 #include "images.h"
 #include "display.h"
 
-void createSmallPhobia(bool image[WIDTH][HEIGHT])
+/////////////////////////////////////////////////////////////
+
+bool image[WIDTH][HEIGHT];
+
+TFlipDotDisplay Display(3);
+
+/////////////////////////////////////////////////////////////
+
+volatile bool Interrupt = false;
+
+void InterruptBackground()
 {
-  using namespace Font3x7;
-  TImage images[] = {Letter_p, Letter_h, Letter_o, Letter_b, Letter_i, Letter_a};
-  createImage(image, images, 6, 1);
+  Interrupt = true;
+  Display.FireInterrupt();
 }
 
-void createLargePhobia(bool image[WIDTH][HEIGHT]) 
-{
-  using namespace Font4x7;
-  TImage images[] = {Letter_P, Letter_H, Letter_O, Letter_B, Letter_I, Letter_A};
-  createImage(image, images, 6, 1);
+void BackgroundShow()
+{ 
+  // Interruptable background display show.
+   
+  Interrupt = false;
+  Display.ResetInterrupt();
+
+  int i = 0;
+  while (true) {
+    Display.Shuffle(2000);
+    if (Interrupt) {
+      return;
+    }
+    createHotel(image);
+    Display.ChaoticMorph(image);
+
+    if (!DelayImpl(8000, &Interrupt)) {
+      return;
+    }
+
+    Display.Shuffle(2000);
+    if (Interrupt) {
+      return;
+    }
+    createNoir(image);
+    Display.ChaoticMorph(image);
+    if (!DelayImpl(8000, &Interrupt)) {
+      return;
+    }
+    
+    Display.Shuffle(2000);
+    if (Interrupt) {
+      return;
+    }
+    createSmallPhobia(image);
+    Display.ChaoticMorph(image);
+    
+    if (!DelayImpl(8000, &Interrupt)) {
+      return;
+    }
+  }
 }
 
-void createHotel(bool image[WIDTH][HEIGHT]) 
-{
-  using namespace Font4x7;
-  TImage images[] = {Letter_H, Letter_O, Letter_T, Letter_E, Letter_L};
-  createImage(image, images, 5, 1);
-}
-
-void createNoir(bool image[WIDTH][HEIGHT]) 
-{
-  using namespace Font4x7;
-  TImage images[] = {Letter_N, Letter_O, Letter_I, Letter_R};
-  createImage(image, images, 4, 1);
-}
-
-void createSpecial(bool image[WIDTH][HEIGHT])
-{
-  TImage images[] = {Letter_K, PlusSign, Letter_PRus, EqualSign, Heart};
-  createImage(image, images, 5, 1);
-}
-
-TFlipDotDisplay Display(8);
+/////////////////////////////////////////////////////////////
 
 void setup() 
 { 
+  Serial.begin(9600);
+  attachInterrupt(digitalPinToInterrupt(2), InterruptBackground, RISING);
+  
   Display.CleanImage();
   delay(5000); 
+
+  createSpecial(image);
+
+  for (int i = 0; i < HEIGHT; ++i) {
+    for (int j = 0; j < Letter_K.Width; ++j) {
+      Serial.print(pgm_read_byte(&(Letter_KData[j][i])));
+    }
+    Serial.println();
+  }
+
+  for (int i = 0; i < HEIGHT; ++i) {
+    for (int j = 0; j < Letter_K.Width; ++j) {
+      Serial.print(Letter_KData1[j][i]);
+    }
+    Serial.println();
+  }
+  
+  
+  Display.TopShutter(image);
+
+
+
 }
 
 void loop() 
 {
-  bool image[WIDTH][HEIGHT];
 
+/*
+  createSpecial(image);
+  Display.ChaoticMorph(image);
+
+  delay(5000);
+ 
+
+  BackgroundShow();
+
+
+  createDigits(image, "0.42", 4);
+  Display.RightMorph(image);
+  delay(3000);
+
+  createDigits(image, "4.26", 4);
+  Display.RightMorph(image);
+  delay(3000);
+
+  createDigits(image, "42.60", 5);
+  Display.RightMorph(image);
+  delay(3000);
+
+  createError(image);
+  Display.TopShutter(image);
+  delay(5000);
+  createDigits(image, "0.00", 4);
+  Display.TopShutter(image);
+  delay(3000);
+*/
+
+/*
   createSmallPhobia(image);
   Display.Shuffle(2000);
   Display.ChaoticMorph(image);
@@ -74,7 +154,6 @@ void loop()
 
   delay(10000);
   
-  /*
   createSpecial(image);
   Display.ChaoticMorph(image);
 
