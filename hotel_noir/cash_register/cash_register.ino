@@ -5,6 +5,8 @@
 #include "display.h"
 #include "images.h"
 
+#undef USE_ENCODER
+
 //////////////////////////////////////////////////////////////////
 
 const int RelayValue = 610;
@@ -104,7 +106,28 @@ void UpdateDisplay()
   } else {
     createDigits(image, PressedDigits, UnpressedIndex);
     Display.RightMorph(image);
-  }
+  }  
+}
+
+// Easy version without encoder.
+void UpdateDisplayLight()
+{
+  createDigits(image, PressedDigits, UnpressedIndex);
+  Display.RightMorph(image);
+    
+  if (UnpressedIndex > 2) {
+    int32_t value = GetValue();
+    if (value == RelayValue) {
+      PrintReceipt();
+    } else {
+      createError(image);
+      Display.TopShutter(image);
+    }
+    delay(5000);
+    UnpressedIndex = 0;
+    
+    UpdateDisplayLight();
+  }  
 }
 
 void PlayBackground()
@@ -171,16 +194,18 @@ void loop() {
   int prevCount = Encoder.GetCounter();
   */
 
-  Encoder.Update();
-  if (Encoder.GetUpdateTime() > LastIdleEnd) {
-    LastIdleEnd = Encoder.GetUpdateTime();
-  }
-  
-  for (int i = 0; i < DIGIT_COUNT; ++i) {
+for (int i = 0; i < DIGIT_COUNT; ++i) {
     Buttons[i].Update();
     if (Buttons[i].UpdateTime > LastIdleEnd) {
       LastIdleEnd = Buttons[i].UpdateTime;
     }
+  }
+
+
+#ifdef USE_ENCODER
+  Encoder.Update();
+  if (Encoder.GetUpdateTime() > LastIdleEnd) {
+    LastIdleEnd = Encoder.GetUpdateTime();
   }
 
   if (millis() - LastIdleEnd > IdlePeriod) {
@@ -204,7 +229,7 @@ void loop() {
     Serial.print(" counter ");
     Serial.println(Encoder.GetCounter());
   }*/
-
+  
   if (UnpressedIndex != prevUnpressedIndex) {
     Serial.println(F("Update display."));
     UpdateDisplay();
@@ -221,4 +246,12 @@ void loop() {
     UnpressedIndex = 0;
     UpdateDisplay();
   }
+#else
+  if (UnpressedIndex != prevUnpressedIndex) {
+    Serial.println(F("Update display."));
+    UpdateDisplayLight();
+    Display.PrintToSerial();
+  }
+#endif
+
 }
