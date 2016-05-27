@@ -3,7 +3,7 @@
 #define CLOCK A4
 #define DATA A3
 
-#define ARKENSTONE A2
+#define ARKENSTONE 13
 
 // Emergency button
 #define PANIC A1
@@ -24,7 +24,7 @@ long LastFlash = 0;
 
 /////////////////////////////////////////////////////////////////////////////
 
-void flash_segments()
+void flash_segments_and_boxes()
 {
   long now = millis();
   if (now - LastFlash < 20 * 1000) {
@@ -33,12 +33,17 @@ void flash_segments()
   LastFlash = now;
   
   Serial.println("Flash segments");
-  for (int i = SEGMENT_BEGIN; i < SEGMENT_END; ++i) {
-    digitalWrite(i, LOW);
+ // for (int i = SEGMENT_BEGIN; i < SEGMENT_END; ++i) {
+  //  digitalWrite(i, LOW);
+  //  delay(500);
+   // digitalWrite(i, HIGH);}  //different segments
+
+  for (int i = 1; i < 5; ++i){
+    for (int j = SEGMENT_BEGIN; j < SEGMENT_END; ++j)   digitalWrite(j, LOW);
     delay(500);
-    digitalWrite(i, HIGH);
-  }
-}
+    for (int k = SEGMENT_BEGIN; k < SEGMENT_END; ++k)   digitalWrite(k, HIGH);
+    delay(500);
+  }}
 
 void close_everything()
 {
@@ -188,7 +193,7 @@ void loop()
   
   if (!ArkenstoneFlag) {
     ArkenstoneFlag = true;
-    flash_segments();
+    flash_segments_and_boxes();
   }
 
   if (digitalRead(PANIC) == LOW) {
