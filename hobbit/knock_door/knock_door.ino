@@ -107,15 +107,19 @@ void loop ()
     digitalWrite(LedPin, LOW);
   } 
   
-  // We consider only series of 2+ knocks to filter out noise.
-  if (knockCount > 1 && millis() - getLastKnockTime() > MaxTimeBetweenKnocks) {
-    Serial.println("Start gandalf, reset knocks");
-    knockCount=0;       
-  
-    /* 
-    mp3_play(1); 
-    delay(5000); // гендальф не пускает
-    */
+  if (knockCount > 0 && millis() - getLastKnockTime() > MaxTimeBetweenKnocks) { 
+    // We consider only series of 2+ knocks to filter out noise.
+    if (knockCount > 1) {
+      Serial.println("Start gandalf");      
+      /* 
+      mp3_play(1); 
+      delay(5000); // гендальф не пускает
+      */
+    }
+    
+    Serial.print("Reset knocks, count ");      
+    Serial.println(knockCount);      
+    knockCount=0; 
   }
 }
 
