@@ -94,6 +94,11 @@ void loop ()
   if (value > ThresholdValue && millis() - getLastKnockTime() > MinTimeBetweenKnocks) { 
     Serial.println("Add knock");
     addKnock();
+    
+    digitalWrite(LedPin, HIGH);
+    delay(50);
+    digitalWrite(LedPin, LOW);
+    
     if (validateRythm()) {
       Serial.println("Open door");
       knockCount = 0;
@@ -101,10 +106,6 @@ void loop ()
       delay(5000);  
       digitalWrite(RelayPin, HIGH);
     }
-    
-    digitalWrite(LedPin, HIGH);
-    delay(100);
-    digitalWrite(LedPin, LOW);
   } 
   
   if (knockCount > 0 && millis() - getLastKnockTime() > MaxTimeBetweenKnocks) { 
