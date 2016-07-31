@@ -1,5 +1,5 @@
 #include <SoftwareSerial.h>
-//#include <DFPlayer_Mini_Mp3.h>
+#include <DFPlayer_Mini_Mp3.h>
 
 
 const int PiezoPin = A2;
@@ -55,16 +55,22 @@ bool validateRythm()
     d3 == 4 * d1 / 9 (mistake <= 1/9 d1)
     d4 == 4 * d1 / 9 (mistake <= 1/9 d1)
   */
+  
+  Serial.println("Durations");
+  Serial.println(d1);
+  Serial.println(d2);
+  Serial.println(d3);
+  Serial.println(d4);
 
-  if (d2 > (6 * d1 / 5) || d2 < (4 * d1 / 5)) {
+  if (d2 > (13 * d1 / 10) || d2 < (7 * d1 / 10)) {
     return false;
   }
   
-  if (d3 > (5 * d1 / 9) || d3 < (3 * d1 / 9)) {
+  if (d3 > (5.5 * d1 / 8) || d3 < (2.5 * d1 / 8)) {
     return false;
   }
   
-  if (d4 > (5 * d1 / 9) || d4 < (3 * d1 / 9)) {
+  if (d4 > (5.5 * d1 / 8) || d4 < (2.5 * d1 / 8)) {
     return false;
   }
   
@@ -74,8 +80,8 @@ bool validateRythm()
 void setup () 
 {
   Serial.begin(9600);
-  //mp3_set_serial(Serial);	//set softwareSerial for DFPlayer-mini mp3 module 
-  //mp3_set_volume(20);
+  mp3_set_serial(Serial);	//set softwareSerial for DFPlayer-mini mp3 module 
+  mp3_set_volume(30);
   pinMode(LedPin, OUTPUT); //просто так - лампочка
   pinMode(RelayPin, OUTPUT); //реле
   digitalWrite(RelayPin, HIGH);
@@ -112,10 +118,9 @@ void loop ()
     // We consider only series of 2+ knocks to filter out noise.
     if (knockCount > 1) {
       Serial.println("Start gandalf");      
-      /* 
-      mp3_play(1); 
+      
+      mp3_next(); 
       delay(5000); // гендальф не пускает
-      */
     }
     
     Serial.print("Reset knocks, count ");      
