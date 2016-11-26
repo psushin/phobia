@@ -9,3 +9,5 @@ originD = 734, 846
 
 screen_size = 1280, 1024
 
+coin_count = 4
+

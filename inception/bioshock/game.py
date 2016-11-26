@@ -3,6 +3,7 @@
 
 import sys, pygame
 import time
+import serial
 
 from config import *
 
@@ -39,15 +40,25 @@ class Game:
     def __init__(self):
         pygame.init()
 
-        # , pygame.FULLSCREEN
-        self.screen = pygame.display.set_mode(screen_size)
+        self.screen = pygame.display.set_mode(screen_size, pygame.FULLSCREEN)
 
         self.entry = pygame.image.load("png/entry.png").convert()
+
+        self.s = [ 
+            pygame.image.load("png/s1.jpg").convert(),
+            pygame.image.load("png/s2.jpg").convert(),
+            pygame.image.load("png/s3.jpg").convert(),
+            pygame.image.load("png/s4.jpg").convert() 
+        ]
+
+        self.f = pygame.image.load("png/f.jpg").convert()
 
         self.errors = {
             "rus" : pygame.image.load("png/errors-{}.png".format("rus")).convert(),
             "eng" : pygame.image.load("png/errors-{}.png".format("eng")).convert()
         }
+
+        self.init_serial()
 
         self.lang = "rus"
         self.questions = {
@@ -74,7 +85,15 @@ class Game:
         again_eng_size = 207, 132
         self.again["eng"] = pygame.Rect(again_eng_orig, again_eng_size)
 
-        self.hooray = pygame.image.load("png/hooray.jpg").convert()
+    def init_serial(self):
+        while True:
+            for i in xrange(10):
+                try: 
+                    self.ser = serial.Serial('/dev/ttyUSB{}'.format(i), timeout = 0)  
+                    return
+                except:
+                    print "Failed to reset serial {}".format(i)
+                    self.show_error()
 
     def select_language(self):
         self.screen.blit(self.entry, (0, 0))
@@ -135,10 +154,26 @@ class Game:
         background.blit(self.digits[error_count - 1], digit_pos)
         return background
 
-    def show_black(self):
-        black = pygame.Surface(screen_size)
-        self.screen.blit(black, (0, 0))
+    def show_reset(self):
+        self.screen.fill((0, 255, 0))
         pygame.display.flip()
+        time.sleep(1)
+        self.screen.fill((0, 0, 0))
+        pygame.display.flip()
+
+    def show_error(self):
+        self.screen.fill((255, 0, 0))
+        pygame.display.flip()
+        time.sleep(1)
+        self.screen.fill((0, 0, 0))
+        pygame.display.flip()
+
+    def show_prompt(self):
+        pygame.mouse.set_visible(False)
+        self.screen.blit(self.s[0], (0, 0))
+        pygame.display.flip()
+
+        i = 0
 
         while True:
             for event in pygame.event.get():
@@ -147,6 +182,29 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     return
 
+            try:
+                while True:
+                    a  = self.ser.read()
+                    if not a:
+                        break
+
+                    i = ord(a)
+
+                    print 'Received counter ', i
+                    if i < coin_count:
+                        self.screen.blit(self.s[i], (0, 0))
+                        pygame.display.flip()
+                    elif i == coin_count:
+                        pygame.mouse.set_visible(True)
+                        return 
+                    elif i == 255:
+                        self.show_reset()
+
+            except serial.SerialException:
+                # May happen after coin reader resetting.
+                print "Resetting serial connection"
+                time.sleep(1)
+                self.init_serial()
 
     def show_result(self, error_count, lang):
         result = self.get_result(error_count, lang)
@@ -166,7 +224,7 @@ class Game:
                         return
 
     def show_success(self):
-        self.screen.blit(self.hooray, (0, 0))
+        self.screen.blit(self.f, (0, 0))
         pygame.display.flip()
 
         while True:
@@ -175,9 +233,13 @@ class Game:
                     if event.type == pygame.MOUSEBUTTONDOWN:
                         sys.exit()
 
+    def open_lock(self):
+        self.ser.write(chr(1))     # write a string
+        time.sleep(1)
+
     def run(self):
         while True:
-            self.show_black()
+            self.show_prompt()
 
             lang = self.select_language()
             while True:
@@ -186,7 +248,8 @@ class Game:
                 if error_count != 0:
                     self.show_result(error_count, lang)
                 else:
-                    break;
+                    self.open_lock()
+                    break
 
 def main():
      g = Game()
