@@ -263,13 +263,13 @@ private:
     digitalWrite(FanPin, LOW);
     delay(2000);
     
-    // Open magnet for 1 sec.
+    // Open magnet forever, to make sure that door has opened as well.
     digitalWrite(MagnetPin, LOW);
+    
     delay(1000);
-    digitalWrite(MagnetPin, HIGH);
-
+    
     StopShakingAndFlashing();
-
+        
     // Run fan for 120 sec.
     delay(120000);
     digitalWrite(FanPin, HIGH);
