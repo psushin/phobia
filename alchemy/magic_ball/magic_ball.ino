@@ -92,43 +92,58 @@ bool WasGloom = false;
 #define PIN_RING2 9
 #define PIN_RING3 10
 
-#define PIN_ALCHEMY 5
+#define PIN_FROM_ALCHEMY_OK 5
+#define PIN_FROM_ALCHEMY_FAIL 6
+
+#define PIN_ACTIVATE_ALCHEMY A0
 
 // Mode 1: wait for gerkons.
 void RunMode1()
 {
-  int value = int(digitalRead(PIN_RING1)) + int(digitalRead(PIN_RING2)) + int(digitalRead(PIN_RING3));
-  
+  int value = int(digitalRead(PIN_RING1)) + int(digitalRead(PIN_RING2)) + int(digitalRead(PIN_RING3));  
   Serial.println(value);
+ 
   if (value == 0) {
     FadeIn();
-    mp3_play (1); // Проигрываем "mp3/0001.mp3"
+    mp3_play(1); // Проигрываем "mp3/0001.mp3"
     delay(10000);
     mp3_stop();
   
     TimestampMode2 = millis();  
-    Mode = 2;  
+    Mode = 2;
+  
+    Serial.println("Sending signal to alchemy machine");
+    digitalWrite(PIN_ACTIVATE_ALCHEMY, HIGH);
+    delay(1500);
+    digitalWrite(PIN_ACTIVATE_ALCHEMY, LOW);
   }
 }
 
 // Mode 2: wait for signal from alchemy machine.
 void RunMode2()
 {
-  if (digitalRead(PIN_ALCHEMY) == LOW) {
+  if (digitalRead(PIN_FROM_ALCHEMY_OK) == LOW) {
+    Serial.println("Alchemy machine produced crystall");
     mp3_play(2);
     delay(10000);
     mp3_stop();  
     
     Mode = 3;
-    return;    
-  }
+  }  
   
-  if ((millis() - TimestampMode2 > GloomDuration) && !WasGloom) {
-    WasGloom = true;
+  if (digitalRead(PIN_FROM_ALCHEMY_FAIL) == LOW) {
+    Serial.println("Alchemy machine was pissed off");
     mp3_play(3);
-    Rainbow();
+    delay(10000);
     mp3_stop();  
   }
+  
+  //if ((millis() - TimestampMode2 > GloomDuration) && !WasGloom) {
+  //  WasGloom = true;
+  //  mp3_play(3);
+  //  Rainbow();
+  //  mp3_stop();  
+  //}
 }
 
 // Mode 3: wait for signal from crypt.
@@ -153,8 +168,13 @@ void setup() {
   
   pinMode(PIN_RING1, INPUT_PULLUP);
   pinMode(PIN_RING2, INPUT_PULLUP);
-  pinMode(PIN_RING3, INPUT_PULLUP);  
-  pinMode(PIN_ALCHEMY, INPUT_PULLUP);  
+  pinMode(PIN_RING3, INPUT_PULLUP);
+  
+  pinMode(PIN_FROM_ALCHEMY_OK, INPUT_PULLUP);  
+  pinMode(PIN_FROM_ALCHEMY_FAIL, INPUT_PULLUP);  
+  
+  pinMode(PIN_ACTIVATE_ALCHEMY, OUTPUT);
+  digitalWrite(PIN_ACTIVATE_ALCHEMY, LOW);
 }
 
 void loop() {
