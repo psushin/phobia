@@ -27,9 +27,9 @@ SoftwareSerial MP3Serial(3, 4);
 void FadeIn()
 {
   // Into blue.
-  const int R = 14;
-  const int G = 119;
-  const int B = 174;
+  const long R = 14;
+  const long G = 119;
+  const long B = 174;
   
   const int TotalTime = 10000;
   const int DeltaTime = 50;
@@ -83,14 +83,14 @@ void Rainbow()
 int Mode = 1;
 
 long TimestampMode2;
-const long GloomDuration = 5 * 60 * 1000;
+const long GloomDuration = 5L * 60 * 1000;
 bool WasGloom = false;
 
 //////////////////////////////////////////////////////////////////////////////////
 
-#define PIN_RING1 8
-#define PIN_RING2 9
-#define PIN_RING3 10
+#define PIN_RINGS 10
+//#define PIN_RING2 9
+//#define PIN_RING3 10
 
 #define PIN_FROM_ALCHEMY_OK 5
 #define PIN_FROM_ALCHEMY_FAIL 6
@@ -100,10 +100,10 @@ bool WasGloom = false;
 // Mode 1: wait for gerkons.
 void RunMode1()
 {
-  int value = int(digitalRead(PIN_RING1)) + int(digitalRead(PIN_RING2)) + int(digitalRead(PIN_RING3));  
-  Serial.println(value);
+  //int value = int(digitalRead(PIN_RING1)) + int(digitalRead(PIN_RING2)) + int(digitalRead(PIN_RING3));  
+  //Serial.println(value);
  
-  if (value == 0) {
+  if (digitalRead(PIN_RINGS) == LOW) {
     FadeIn();
     mp3_play(1); // Проигрываем "mp3/0001.mp3"
     delay(10000);
@@ -166,9 +166,7 @@ void setup() {
   
   Serial.begin(9600);
   
-  pinMode(PIN_RING1, INPUT_PULLUP);
-  pinMode(PIN_RING2, INPUT_PULLUP);
-  pinMode(PIN_RING3, INPUT_PULLUP);
+  pinMode(PIN_RINGS, INPUT_PULLUP);
   
   pinMode(PIN_FROM_ALCHEMY_OK, INPUT_PULLUP);  
   pinMode(PIN_FROM_ALCHEMY_FAIL, INPUT_PULLUP);  

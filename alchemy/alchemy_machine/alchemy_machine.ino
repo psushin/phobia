@@ -187,13 +187,13 @@ void DoAllMagic()
 {
   // Switch pump.
   digitalWrite(PumpPin, LOW);
-  delay(3000);
+  delay(7000);
   digitalWrite(PumpPin, HIGH);
   
   if (HasWarmedUp()) {
     Serial.println("Smoke machine warmed up");
     digitalWrite(SmokeRunPin, LOW);
-    delay(1000);
+    delay(3000);
     digitalWrite(SmokeRunPin, HIGH);
   } else {
     Serial.println("Smoke machine didn't warmed up, skipping...");
@@ -216,10 +216,8 @@ void RunActive()
     delay(30 * 1000);
     
     digitalWrite(GoodOutPin, HIGH);      
-    delay(200);
-    digitalWrite(GoodOutPin, LOW);      
-    
-    delay(5000);
+    delay(20000);
+
     Reset();
   } else if (IngridientBuffer.GetTotalCount() % 12 == 0) {
     digitalWrite(BadOutPin, HIGH);      
