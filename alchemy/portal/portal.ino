@@ -1,3 +1,5 @@
+// Windows-only!
+
 #include <SPI.h>
 #include <MFRC522.h>
 #include <EEPROM.h>
@@ -12,7 +14,8 @@
 #define EXT_IN1        A1           // Внешний сигнал активации 1 (от первой платы кристалла)
 #define EXT_IN2        5            // Внешний сигнал активации 2
 #define EXT_IN3        6            // Внешний сигнал активации 3
-#define EXT_IN4        9            // Внешний сигнал активации 4
+
+#define FINAL_RELAY    9
   
 #define DOOR           7            // Открылась дверь в четвертую комнату, включаем все.
 #define FAILURE        4            // Окончание квеста по кнопке, невыход.
@@ -56,7 +59,9 @@ void setup()
   pinMode(EXT_IN1, INPUT); // настроить как вход  
   pinMode(EXT_IN2, INPUT); // настроить как вход
   pinMode(EXT_IN3, INPUT); // настроить как вход
-  pinMode(EXT_IN4, INPUT); // настроить как вход
+  pinMode(FINAL_RELAY, OUTPUT); // настроить как вход
+
+  digitalWrite(FINAL_RELAY, HIGH);
   
   pinMode(SD_R, OUTPUT);
   pinMode(SD_G, OUTPUT);
@@ -222,6 +227,8 @@ void handle_prepared()
     delay(500);
     sd_access_clear;
 
+    // Wait 10 sec before calling closer.
+    delay(10000);
     
     Serial.println("CALL_CLOSER");
     State = ES_OPENED;
@@ -236,16 +243,16 @@ void handle_opened()
     return;
   }
 
-  if (millis() - was_opened_timestamp > 120LL * 1000) {
+  if (millis() - was_opened_timestamp > 60LL * 1000) {
     // Если уже очень долго, не ждем, пока они подойдут.
     Serial.println("GREETING");
     State = ES_ACTIVE;
     return;
   }
   
-  const int PRESENCE_DISTANCE = 100;
+  const int PRESENCE_DISTANCE = 80;
   
-  for (int i = 0; i < 5; ++i) {  
+  //for (int i = 0; i < 5; ++i) {  
     digitalWrite(TRIG, LOW);
     delayMicroseconds(2);
   
@@ -269,7 +276,7 @@ void handle_opened()
       // if distance is longer - fail
       return;
     }
-  }
+  //}
 
   sd_access_green;
   delay(200);
@@ -298,7 +305,9 @@ void handle_active()
     sd_access_clear;
     
     Serial.println("FAILURE");
-    State = ES_FINISHED;  
+    digitalWrite(FINAL_RELAY, LOW);
+    State = ES_FINISHED;
+    return;
   }
   
   unsigned long timeout = 0;
@@ -360,6 +369,7 @@ void handle_active()
          sd_access_green;      
          Serial.println("SUCCESS");  
          State = ES_FINISHED;
+         digitalWrite(FINAL_RELAY, LOW);
        } else if (was_stupid_timestamp == 0 || new_time - was_stupid_timestamp > STUPID_TIMEOUT) {
          // Не посылать STUPID чаще чем раз в 5 минут.
          Serial.println("STUPID");
