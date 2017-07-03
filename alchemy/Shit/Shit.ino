@@ -47,7 +47,7 @@
 #define but7_state            digitalRead(BUTTON7)    //прочитать состояние 7-й кнопки
 
 //Флаги
-volatile unsigned char ACTIVE_MODE_ON = 0; //флаг включения активного режима
+volatile unsigned char MODE = 0; // 0 - до получения сигнала, 1 - играем, 2 - выиграли.
 unsigned char START_KEY_TIMEOUT = 0; //начало таймаута нажатия кнопки
 unsigned char SEGMENT_PRESSED = 0; //нужный сегмент был нажат
 unsigned char GAME_OVER = 0; //игра проиграна
@@ -59,12 +59,6 @@ unsigned char key = 0, old_key = 0, new_key = 0, received_key = 0; //состо�
 unsigned char segment = 0; //выпавший сегмент
 unsigned char seg_counter = 0; //счётчик сегментов
 unsigned long time_delay = MAX_TIME_DELAY;
-
- 
-void active_mode_enable()
-{
-  ACTIVE_MODE_ON = 1;
-}
  
 void setup() 
 { 
@@ -89,9 +83,8 @@ void setup()
   pinMode(SD7, OUTPUT); // настроить как выход
   sd7_off;            // и подать логический 0
   
-  //pinMode(BUTTON1, INPUT_PULLUP); // настроить как вход
+
   pinMode(BUTTON1, INPUT); // настроить как вход
-  //digitalWrite(BUTTON1, LOW); // притянуть к земле
   pinMode(BUTTON2, INPUT); // настроить как вход
   pinMode(BUTTON3, INPUT); // настроить как вход
   pinMode(BUTTON4, INPUT); // настроить как вход
@@ -107,7 +100,7 @@ void setup()
   Serial.begin(9600); // Initialize serial communications with the PC
   while (!Serial);    // Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
 
-  Serial.println("Shit Proramm Started");
+  Serial.println("Shield Proramm Started");
   delay(50);
   
   timeout = 0;
@@ -117,8 +110,11 @@ void setup()
   while(timeout<10000) //запустить тестовый режим в течение 10с
   { 
     new_time = millis();
-    if((new_time - old_time)>=0) timeout = new_time - old_time;
-    else timeout = 0xffffffff - old_time + new_time;
+    if((new_time - old_time)>=0) {
+      timeout = new_time - old_time;
+    } else {
+      timeout = 0xffffffff - old_time + new_time;
+    }
 
 	key = (but7_state<<6) + (but6_state<<5) + (but5_state<<4) + (but4_state<<3) + (but3_state<<2) + (but2_state<<1) + but1_state; // собираем состояние кнопок
 	
@@ -164,7 +160,6 @@ void setup()
 	}
 	
   }
-  attachInterrupt(1, active_mode_enable, FALLING); //включаем прерывание по спаду на Int1, обработчик "active_mode_enable"
   
   sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
   
@@ -174,212 +169,220 @@ void setup()
   //LED_BLINKING = 1;
   //led_off;            //выключение подсветки
   
-} 
- 
-void loop() 
-{ 
+}
 
-  if(ACTIVE_MODE_ON)
-  {
-	
-	segment = (unsigned char) random(1, 7); //выбираем новый сегмент
-	
-	switch ( segment ) //зажигаем нужный сегмент
-    {
+void select_segment()
+{
+  unsigned char new_segment = 0;
+  do {
+    new_segment = (unsigned char) random(1, 7); //выбираем новый сегмент
+  } while (segment == new_segment);
+  segment = new_segment;
+}
+
+void fire_segment()
+{
+  switch ( segment ) { //зажигаем нужный сегмент 
       case 1:
         sd1_on; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
         break;
       case 2:
         sd1_off; sd2_on; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
         break;
-	  case 3:
+    case 3:
         sd1_off; sd2_off; sd3_on; sd4_off; sd5_off; sd6_off; sd7_off;
         break;
-	  case 4:
+    case 4:
         sd1_off; sd2_off; sd3_off; sd4_on; sd5_off; sd6_off; sd7_off;
         break;
-	  case 5:
+    case 5:
         sd1_off; sd2_off; sd3_off; sd4_off; sd5_on; sd6_off; sd7_off;
         break;
-	  case 6:
+    case 6:
         sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_on; sd7_off;
         break;
-      case 7:
+    case 7:
         sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_on;
         break;
-      default:
+    default:
         sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
+  }
+}
+
+void mode0()
+{
+  if (digitalRead(EXT) == LOW) {
+    MODE = 1;
+    Serial.println("Switched to active mode");  
+  }
+}
+
+void mode1()
+{
+  select_segment();
+  fire_segment();
+  
+  while (received_key != (1<<(segment-1))) //ждём пока его нажмут
+  {
+    key = (but7_state<<6) + (but6_state<<5) + (but5_state<<4) + (but4_state<<3) + (but3_state<<2) + (but2_state<<1) + but1_state; // собираем состояние кнопок
+  
+    if(old_key != key) // если значение кнопок изменилось, то начать проверку от дребезга
+    {
+      old_key = key; 
+      key_timeout = 0;
+      key_old_time =  millis(); 
+      START_KEY_TIMEOUT = 1;
     }
-	
-	while (received_key != (1<<(segment-1))) //ждём пока его нажмут
-	{
-		key = (but7_state<<6) + (but6_state<<5) + (but5_state<<4) + (but4_state<<3) + (but3_state<<2) + (but2_state<<1) + but1_state; // собираем состояние кнопок
-	
-		if(old_key != key) // если значение кнопок изменилось, то начать проверку от дребезга
-		{
-			old_key = key; 
-			key_timeout = 0;
-			key_old_time =  millis(); 
-			START_KEY_TIMEOUT = 1;
-		}
-	
-		if(START_KEY_TIMEOUT)//если таймаут кнопки запущен
-		{
-			if(key_timeout<KEY_SENCE )
-			{
-				if((key_new_time - key_old_time)>=0) key_timeout = key_new_time - key_old_time;
-				else key_timeout = 0xffffffff - key_old_time + key_new_time;
-			}
-			else //если таймаут выдержался
-			{
-				START_KEY_TIMEOUT = 0;
-				new_key = old_key; 
-			}
-		}
-	
-		if(received_key != new_key) received_key = new_key; 
-	
-	}
-	
-	//Начало игры
-	seg_counter = 0;
-	GAME_OVER = 0;
-	Serial.println("Start game");
-	delay(50);
-	
-	while((seg_counter < 10) && !GAME_OVER) //пока не будут нажаты все сегменты или игра не будет проиграна
-	{
-		segment = (unsigned char) random(1, 7); //выбираем новый сегмент
-	
-		switch ( segment ) //зажигаем нужный сегмент
-		{
-			case 1:
-				sd1_on; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
-				break;
-			case 2:
-				sd1_off; sd2_on; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
-				break;
-			case 3:
-				sd1_off; sd2_off; sd3_on; sd4_off; sd5_off; sd6_off; sd7_off;
-				break;
-			case 4:
-				sd1_off; sd2_off; sd3_off; sd4_on; sd5_off; sd6_off; sd7_off;
-				break;
-			case 5:
-				sd1_off; sd2_off; sd3_off; sd4_off; sd5_on; sd6_off; sd7_off;
-				break;
-			case 6:
-				sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_on; sd7_off;
-				break;
-			case 7:
-				sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_on;
-				break;
-			default:
-				sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
-		}
-		
-		SEGMENT_PRESSED = 0;
-		
-		timeout = 0;
-		old_time = millis();
-		
-		while((timeout<time_delay) && !SEGMENT_PRESSED) //пока не вышел таймаут или не нажат сегмент
-		{
-			
-			 new_time = millis();
-			if((new_time - old_time)>=0) timeout = new_time - old_time;
-			else timeout = 0xffffffff - old_time + new_time;
-			
-			key = (but7_state<<6) + (but6_state<<5) + (but5_state<<4) + (but4_state<<3) + (but3_state<<2) + (but2_state<<1) + but1_state; // собираем состояние кнопок
-	
-			if(old_key != key) // если значение кнопок изменилось, то начать проверку от дребезга
-			{
-				old_key = key; 
-				key_timeout = 0;
-				key_old_time =  millis(); 
-				START_KEY_TIMEOUT = 1;
-			}
-	
-			if(START_KEY_TIMEOUT)//если таймаут кнопки запущен
-			{
-				if(key_timeout<KEY_SENCE )
-				{
-					if((key_new_time - key_old_time)>=0) key_timeout = key_new_time - key_old_time;
-					else key_timeout = 0xffffffff - key_old_time + key_new_time;
-				}
-				else //если таймаут выдержался
-				{
-					START_KEY_TIMEOUT = 0;
-					new_key = old_key; 
-				}
-			}
-	
-			if(received_key != new_key) 
-			{
-				received_key = new_key; 
-				if(received_key == (1<<(segment-1))) 
-				{
-					SEGMENT_PRESSED = 1; //нажат нужный сегмент
-					time_delay = time_delay-(MAX_TIME_DELAY-MIN_TIME_DELAY)/10;
-					seg_counter++;
-					
-					Serial.print("seg_counter ");
-			        delay(50);
-					Serial.println(seg_counter);
-			        delay(50);
-					
-					Serial.print("time_delay ");
-			        delay(50);
-					Serial.println(time_delay);
-			        delay(50);
-					
-				}
-			}
-		}
-		if(!SEGMENT_PRESSED) // ели игра проиграна
-		{
-			GAME_OVER = 1;
-			time_delay = MAX_TIME_DELAY;
-			
-			sd1_on; sd2_on; sd3_on; sd4_on; sd5_on; sd6_on; sd7_on; //финальная анимация
-			delay(500);
-			sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
-			delay(500);
-			sd1_on; sd2_on; sd3_on; sd4_on; sd5_on; sd6_on; sd7_on;
-			delay(500);
-			sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
-			delay(500);
-			sd1_on; sd2_on; sd3_on; sd4_on; sd5_on; sd6_on; sd7_on;
-			delay(500);
-			sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
-			delay(500);
-			Serial.println("Game_over");
-			delay(50);
-		}
-	}
-	
-	if(seg_counter == 10) //если игра пройдена
-	{
-		time_delay = MAX_TIME_DELAY;
-		sd1_on; sd2_on; sd3_on; sd4_on; sd5_on; sd6_on; sd7_on; //финальная анимация
-		delay(500);
-		sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
-		delay(500);
-		sd1_on; sd2_on; sd3_on; sd4_on; sd5_on; sd6_on; sd7_on;
-		delay(500);
-		sd4_off;
-		delay(700);
-		sd3_off; sd5_off;
-		delay(700);
-		sd2_off; sd6_off; 
-		delay(700);
-		sd1_off; sd7_off;
-		mgn_off;                         //отключение магнитного замка
-		Serial.println("You win!!!!");
-		delay(50);
-		ACTIVE_MODE_ON = 0;
-	}
-	
+  
+    if(START_KEY_TIMEOUT)//если таймаут кнопки запущен
+    {
+      if (key_timeout<KEY_SENCE) 
+      {
+        if((key_new_time - key_old_time)>=0) key_timeout = key_new_time - key_old_time;
+        else key_timeout = 0xffffffff - key_old_time + key_new_time;
+      }
+      else //если таймаут выдержался
+      {
+        START_KEY_TIMEOUT = 0;
+        new_key = old_key; 
+      }
+    }
+  
+    received_key = new_key; 
+  }
+  
+  //Начало игры
+  seg_counter = 0;
+  GAME_OVER = 0;
+  Serial.println("Start game");
+  delay(50);
+  
+  while((seg_counter < 10) && !GAME_OVER) //пока не будут нажаты все сегменты или игра не будет проиграна
+  {
+    select_segment();
+    fire_segment();
+    
+    SEGMENT_PRESSED = 0;
+    
+    timeout = 0;
+    old_time = millis();
+    
+    while((timeout<time_delay) && !SEGMENT_PRESSED) //пока не вышел таймаут или не нажат сегмент
+    {
+      
+       new_time = millis();
+      if((new_time - old_time)>=0) timeout = new_time - old_time;
+      else timeout = 0xffffffff - old_time + new_time;
+      
+      key = (but7_state<<6) + (but6_state<<5) + (but5_state<<4) + (but4_state<<3) + (but3_state<<2) + (but2_state<<1) + but1_state; // собираем состояние кнопок
+  
+      if(old_key != key) // если значение кнопок изменилось, то начать проверку от дребезга
+      {
+        old_key = key; 
+        key_timeout = 0;
+        key_old_time =  millis(); 
+        START_KEY_TIMEOUT = 1;
+      }
+  
+      if(START_KEY_TIMEOUT) //если таймаут кнопки запущен
+      {
+        if(key_timeout<KEY_SENCE )
+        {
+          if((key_new_time - key_old_time)>=0) key_timeout = key_new_time - key_old_time;
+          else key_timeout = 0xffffffff - key_old_time + key_new_time;
+        }
+        else //если таймаут выдержался
+        {
+          START_KEY_TIMEOUT = 0;
+          new_key = old_key; 
+        }
+      }
+  
+      if(received_key != new_key) 
+      {
+        received_key = new_key; 
+        if(received_key == (1<<(segment-1))) 
+        {
+          SEGMENT_PRESSED = 1; //нажат нужный сегмент
+          time_delay = time_delay-(MAX_TIME_DELAY-MIN_TIME_DELAY)/10;
+          seg_counter++;
+          
+          Serial.print("seg_counter ");
+              delay(50);
+          Serial.println(seg_counter);
+              delay(50);
+          
+          Serial.print("time_delay ");
+              delay(50);
+          Serial.println(time_delay);
+              delay(50);
+          
+        }
+      }
+    }
+
+    if(!SEGMENT_PRESSED) // ели игра проиграна
+    {
+      GAME_OVER = 1;
+      time_delay = MAX_TIME_DELAY;
+      
+      sd1_on; sd2_on; sd3_on; sd4_on; sd5_on; sd6_on; sd7_on; //финальная анимация
+      delay(500);
+      sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
+      delay(500);
+      sd1_on; sd2_on; sd3_on; sd4_on; sd5_on; sd6_on; sd7_on;
+      delay(500);
+      sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
+      delay(500);
+      sd1_on; sd2_on; sd3_on; sd4_on; sd5_on; sd6_on; sd7_on;
+      delay(500);
+      sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
+      delay(500);
+      Serial.println("Game_over");
+      delay(50);
+    }
+  }
+  
+  if(seg_counter == 10) { //если игра пройдена
+  
+    time_delay = MAX_TIME_DELAY;
+    sd1_on; sd2_on; sd3_on; sd4_on; sd5_on; sd6_on; sd7_on; //финальная анимация
+    delay(500);
+    sd1_off; sd2_off; sd3_off; sd4_off; sd5_off; sd6_off; sd7_off;
+    delay(500);
+    sd1_on; sd2_on; sd3_on; sd4_on; sd5_on; sd6_on; sd7_on;
+    delay(500);
+    sd4_off;
+    delay(700);
+    sd3_off; sd5_off;
+    delay(700);
+    sd2_off; sd6_off; 
+    delay(700);
+    sd1_off; sd7_off;
+    mgn_off;                         //отключение магнитного замка
+    Serial.println("You win!!!!");
+    delay(50);
+    MODE = 2;
+  }
+}
+
+ 
+void loop() 
+{ 
+  switch (MODE) {
+    case 0:
+      // Wait for activation signal.
+      mode0();
+      break;
+
+    case 1:
+      // Play with shield.
+      mode1();
+      break;
+
+    case 2:
+      // We are in a final state, wait for a reset.
+      break;
   }
 
 } 

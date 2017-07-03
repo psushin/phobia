@@ -4,8 +4,9 @@
 #include <SPI.h>
 #include <EEPROM.h>
 #include <Servo.h>
+#include <DFPlayer_Mini_Mp3.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define RST_PIN        8           // Configurable, see typical pin layout above
 #define SS_PIN         10          // Configurable, see typical pin layout above
@@ -68,7 +69,7 @@ EState State = ES_WAIT_SKULL;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined(DEBUG)
+#if (DEBUG)
 /**
    Helper routine to dump a byte array as hex values to Serial.
 */
@@ -105,15 +106,14 @@ void RecordNewTagAndReset()
     if (!mfrc522.PICC_IsNewCardPresent()) {
       continue;
     }
-
-#if defined(DEBUG)
+#if(DEBUG)
     Serial.println("IsNewCard");
     //delay(50);
 #endif
 
     // Select one of the cards
     if ( mfrc522.PICC_ReadCardSerial()) {
-#if defined(DEBUG)
+#if (DEBUG)
       // Show some details of the PICC (that is: the tag/card)
       Serial.print("Card UID:");
       dump_byte_array(mfrc522.uid.uidByte, mfrc522.uid.size);
@@ -143,7 +143,7 @@ void RecordNewTagAndReset()
         }
       }
 
-#if defined(DEBUG)
+#if (DEBUG)
       if (PROGRAMM_OK) {
         Serial.println("Programm OK");
       } else {
@@ -192,7 +192,12 @@ void DoWaitSkull()
 void DoWaitGargoil()
 {
   if (digitalRead(GARGOIL_POSITION) == LOW) {
+  #if (!DEBUG)
+    mp3_play(1);
+  #endif
+
     // Blink eyes.
+
     for (int i = 0; i < 3; ++i) {
       delay(500);
       digitalWrite(GARGOIL_EYES, LOW);
@@ -208,6 +213,13 @@ void DoWaitGargoil()
     sd_access_green;
     delay(500);
     sd_access_yellow;
+
+  /*
+  #if (!DEBUG)
+    delay(3000);
+    mp3_stop();
+  #endif  */
+    
   }
 }
 
@@ -227,7 +239,7 @@ void DoWaitCrystall()
     // Look for new cards
     if ( mfrc522.PICC_IsNewCardPresent())
     {
-#if defined(DEBUG)
+#if (DEBUG)
       Serial.println("IsNewCard");
       //delay(50);
 #endif
@@ -236,7 +248,7 @@ void DoWaitCrystall()
       {
 
 
-#if defined(DEBUG)
+#if (DEBUG)
         // Show some details of the PICC (that is: the tag/card)
         Serial.print("Card UID:");
         //delay(50);
@@ -267,24 +279,25 @@ void DoWaitCrystall()
         }
 
         if (SUCCESS) { //Если карточка принята
-#if defined(DEBUG)
+#if (DEBUG)
           Serial.println();
           Serial.println("Card success");
 #endif
           sd_access_green;
+          ext_out_on;                   // подать сигнал активности плате второго кристала
+          
           myservo1.attach(SERVO_S1);  // подключить сервопривод
           myservo1.write(91);         // скорость вращения сервоприводов >90 вправо <90 влево
           myservo2.attach(SERVO_S2);  // подключить сервопривод
           myservo2.write(89);         // скорость вращения сервоприводов >90 вправо <90 влево
-          delay(60000);
+          delay(30000);
           myservo1.detach();          //отключить сервопривод
           myservo2.detach();
           sd_access_yellow;
-          ext_out_on;                 // подать сигнал активности плате второго кристала
 
           State = ES_ETERNITY;
         } else { //если карточка не верна
-#if defined(DEBUG)
+#if (DEBUG)
           Serial.println();
           Serial.println("Card denied");
 #endif
@@ -331,10 +344,19 @@ void setup()
   pinMode(GARGOIL_POSITION, INPUT_PULLUP);
   pinMode(INPUT_SKULL, INPUT_PULLUP);
 
-  //#if defined(DEBUG)
   Serial.begin(9600); // Initialize serial communications with the PC
   while (!Serial);    // Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
-  //#endif
+
+#if (!DEBUG)
+  mp3_set_serial (Serial);    //set Serial for DFPlayer-mini mp3 module 
+  delay (100);
+  mp3_set_volume(30);
+
+  delay(500);
+  mp3_play(1);
+  delay(2000);
+  mp3_stop();
+#endif
 
   SPI.begin();        // Init SPI bus
   mfrc522.PCD_Init(); // Init MFRC522 card
@@ -347,7 +369,7 @@ void setup()
     legal_UID[i] = EEPROM.read(32245 + i);
   }
 
-#if defined(DEBUG)
+#if (DEBUG)
   Serial.println("Scan a MIFARE Ultralight Started");
   //delay(50);
   dump_byte_array(key.keyByte, MFRC522::MF_KEY_SIZE);
