@@ -22,12 +22,19 @@ const int StartPin = 3;
 ///////////////////////////////////////////////////////////////////////////////
 
 #define N 4
+#define M 10
 
 class TIngridientBuffer
 {
 public:
   void AddValue(int value)
   {
+    bool alreadyIncremented = false;
+    if (TotalCount % M == 0) {
+      ++TotalCount;
+      alreadyIncremented = true;
+    }
+    
     if (Count > 0 && Ingridients[0] == value) {
       // Double presses do not count
       return;
@@ -41,7 +48,10 @@ public:
     if (Count > N) {
       Count = N;
     }
-    ++TotalCount;
+
+    if (!alreadyIncremented) {
+      ++TotalCount;
+    }
   }
   
   void Reset()
@@ -50,7 +60,7 @@ public:
     TotalCount = 0;
   }
   
-  int GetTotalCount() const 
+  long GetTotalCount() const 
   {
     return TotalCount;
   }
@@ -69,7 +79,7 @@ public:
 private:
   int Ingridients[N];
   int Count = 0;
-  int TotalCount = 0;
+  long TotalCount = 0;
 };
 
 TIngridientBuffer IngridientBuffer;
@@ -213,13 +223,13 @@ void RunActive()
   if (IngridientBuffer.CheckIngridients()) {
     DoAllMagic();
     
-    delay(30 * 1000);
+    delay(10 * 1000);
     
     digitalWrite(GoodOutPin, HIGH);      
     delay(20000);
 
     Reset();
-  } else if (IngridientBuffer.GetTotalCount() % 12 == 0) {
+  } else if (IngridientBuffer.GetTotalCount() % 10 == 0) {
     digitalWrite(BadOutPin, HIGH);      
     delay(100);
     digitalWrite(BadOutPin, LOW);      

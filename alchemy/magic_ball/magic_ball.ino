@@ -17,7 +17,7 @@ enum  direction { FORWARD, REVERSE };
 // NeoPattern Class - derived from the Adafruit_NeoPixel class
 class NeoPatterns : public Adafruit_NeoPixel
 {
-    public:
+  public:
  
     // Member Variables:  
     pattern  ActivePattern;  // which pattern is running
@@ -543,6 +543,8 @@ void setup() {
   digitalWrite(PIN_ACTIVATE_CRYPT, LOW);
 
   LedStrip.begin();
+  LedStrip.ColorSet(0);
+  mp3_stop();
 }
 
 void loop() {
