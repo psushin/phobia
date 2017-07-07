@@ -2,10 +2,6 @@
 #include <SoftwareSerial.h>
 #include <DFPlayer_Mini_Mp3.h>
 
-#ifdef __AVR__
-  #include <avr/power.h>
-#endif
-
 #define LED_STRIP_PIN 2
 
 // Pattern types supported:
@@ -371,6 +367,11 @@ public:
         if (NewTrack && TrackNumber == 3) {
           // We don't play track number 3 immediately after any other one.
           NewTrack = false;
+        } 
+        
+        if (!NewTrack && TrackNumber == 2) {
+          // Start heartbeat after track number 2.
+          LedStrip.Heartbeat();  
         }
       }
     } else if (NewTrack) {
@@ -458,20 +459,31 @@ bool WasGloom = false;
 
 //////////////////////////////////////////////////////////////////////////////////
 
+long ActivationTimestamp = 0;
+const long ActivationTimeout = 50;
+
 // Mode 1: wait for rings.
 void RunMode1()
 { 
+  long now = millis();
   if (digitalRead(PIN_RINGS) == LOW) {
-    StartFadeIn();
-
-    // This fires track number 1.
-    Music.SetTrack(1);
+    if (!ActivationTimestamp) {
+      ActivationTimestamp = now;
+    // Protect from noise.
+    } else if (now - ActivationTimestamp >= ActivationTimeout) {
+      StartFadeIn();
   
-    TimestampMode2 = millis();  
-    Mode = 2;
-  
-    Serial.println("Sending signal to alchemy machine");
-    Signaler.SendSignal(PIN_ACTIVATE_ALCHEMY);
+      // This fires track number 1.
+      Music.SetTrack(1);
+    
+      TimestampMode2 = millis();  
+      Mode = 2;
+    
+      Serial.println("Sending signal to alchemy machine");
+      Signaler.SendSignal(PIN_ACTIVATE_ALCHEMY);
+    }
+  } else {
+    ActivationTimestamp = 0;
   }
 }
 
@@ -481,7 +493,6 @@ void RunMode2()
   if (digitalRead(PIN_FROM_ALCHEMY_OK) == LOW) {
     Serial.println("Alchemy machine produced crystall");
     Music.SetTrack(2);
-    LedStrip.Heartbeat();
 
     Serial.println("Sending signal to crypt");
     Signaler.SendSignal(PIN_ACTIVATE_CRYPT);
