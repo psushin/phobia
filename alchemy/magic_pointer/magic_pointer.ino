@@ -67,8 +67,11 @@ void MakeStep(bool forward)
 }
 
 const int HallPin = A0;
-const int HallDiff = 3;
-const long MillisDiff = 500;
+const int HallDiff = 2;
+const long MillisDiff = 1000;
+
+// Value when nothing is present.
+const int MaxHallValue = 517;
 
 int lastHallValue;
 long lastMillis;
@@ -99,7 +102,7 @@ void loop() {
   Serial.println(lastMillis);
   */
   
-  if (abs(hallValue - lastHallValue) > HallDiff) {
+  if (abs(hallValue - lastHallValue) > HallDiff && hallValue < MaxHallValue) {
     MakeStep(true);
     lastHallValue = hallValue;
     lastMillis = now;

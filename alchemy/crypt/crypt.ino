@@ -10,14 +10,79 @@ const int SphereOutputPin = A0;
 const int AutoRotateButtonPin = A1;
 const int ManualRotateButtonPin = A2;
 const int DoorPin = A3;
-const int PresencePin = A4;
 const int PlatformRotatedPin = A5;
+
+const int EchoPin = A4;
+const int TrigPin = 8;
 
 CapacitiveSensor HeartSensor = CapacitiveSensor(6,7);
 
 const int EnginePin = 5;
 const int SphereInputPin = 4;
 const int PumpPin = 3;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+class TPresenceTracker
+{
+public:
+  void AddMeasure()
+  {
+    long now = millis();
+    if (now - LastTime < 200) {
+      return;
+    }
+    
+    const int PRESENCE_DISTANCE = 60;
+    
+    digitalWrite(TrigPin, LOW);
+    delayMicroseconds(2);
+  
+    digitalWrite(TrigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TrigPin, LOW);
+  
+    long duration = pulseIn(EchoPin, HIGH);
+    // Calculating the distance
+    int distance = duration * 0.034 / 2;
+      
+    Serial.print("Distance: ");
+    Serial.println(distance);
+
+    DoAddMeasure(distance < PRESENCE_DISTANCE);
+
+    LastTime = now;
+  }
+
+  bool IsPresent() const
+  {
+    int count = 0;
+    for (int i = 0; i < 10; ++i) {
+      if (Values[i])
+        count += 1;
+    }
+
+    return count > 2;
+  }
+
+private:
+  bool Values[10];
+  int Index = 0;
+
+  long LastTime = 0;
+
+  void DoAddMeasure(bool value)
+  {
+    Values[Index] = value;
+    Index = (Index + 1) % 10;
+  }
+
+} PresenceTracker;
+
+bool  IsPresent() 
+{
+  return digitalRead(EchoPin) == HIGH;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -37,6 +102,8 @@ const int PumpPin = 3;
  * Mode5:
  *  - Прокрутили, реагирую только на кнопки.
  */
+
+ 
 
 enum EState {
   ES_MODE_1,
@@ -71,7 +138,7 @@ void auto_rotate()
 bool check_buttons()
 {
   if (digitalRead(ManualRotateButtonPin) == LOW) {
-    delay(300);
+    delay(50);
     Serial.println("Start manual rotation by button");
     while (digitalRead(ManualRotateButtonPin) == LOW) {
       digitalWrite(EnginePin, HIGH);
@@ -205,18 +272,30 @@ void run_mode_3()
   }
 }
 
+bool IsDoorClosed()
+{
+  if (digitalRead(DoorPin) == LOW) {
+    delay(20);
+    if (digitalRead(DoorPin) == LOW) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void run_mode_4()
 {
   if (check_buttons()) {
-    return;
+     return;
   }
 
-  if (digitalRead(DoorPin) == LOW && digitalRead(PresencePin) == HIGH) {
+  if (PresenceTracker.IsPresent() && IsDoorClosed()) {
      Serial.println("Closing door"); 
      digitalWrite(DoorRelayPin, LOW);
-     delay(3000);
+     delay(1000);
 
-     if (digitalRead(DoorPin) != LOW || digitalRead(PresencePin) != HIGH)  {
+     if (!IsDoorClosed() || !PresenceTracker.IsPresent())  {
        Serial.println("Presence not confirmed");    
        digitalWrite(DoorRelayPin, HIGH);
        return;
@@ -229,12 +308,12 @@ void run_mode_4()
      beep(1500);
      delay(1000);
 
-     if (digitalRead(DoorPin) != LOW || digitalRead(PresencePin) != HIGH)  {
+     if (!IsDoorClosed() || !PresenceTracker.IsPresent())  {
        Serial.println("Presence not confirmed");    
        digitalWrite(DoorRelayPin, HIGH);
        return;
      }
-     
+          
      Serial.println("Finish him! Rotate.");
      auto_rotate(); 
      Serial.println("Finish rotation, switch to mode 5");
@@ -254,11 +333,13 @@ void setup()
   pinMode(BeepPin, OUTPUT);
   pinMode(DoorRelayPin, OUTPUT);
 
+  pinMode(TrigPin, OUTPUT); // Trig pin for distance meter
+  pinMode(EchoPin, INPUT);  // Echo pin for distance meter
+
   pinMode(SphereOutputPin, OUTPUT);
   pinMode(AutoRotateButtonPin, INPUT_PULLUP);
   pinMode(ManualRotateButtonPin, INPUT_PULLUP);
   pinMode(DoorPin, INPUT_PULLUP);
-  pinMode(PresencePin, INPUT);
   pinMode(PlatformRotatedPin, INPUT_PULLUP);
 
   pinMode(EnginePin, OUTPUT);
@@ -274,6 +355,8 @@ void setup()
 
 void loop() 
 {
+  PresenceTracker.AddMeasure();
+  
   switch (State) {
     case ES_MODE_1:
       run_mode_1();
@@ -297,7 +380,6 @@ void loop()
     
   };
   delay(1);
-
   /*
   if (digitalRead(RotateButtonPin) == LOW) {
     delay(300);

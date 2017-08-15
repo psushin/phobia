@@ -284,7 +284,6 @@ void handle_opened()
   delay(200);
   sd_access_clear;
 
-
   // We measured 5 times in a row less than distance.
   Serial.println("GREETING");
   State = ES_ACTIVE;
@@ -305,6 +304,7 @@ void handle_active()
     sd_access_clear;
     
     Serial.println("FAILURE");
+    delay(30000);
     digitalWrite(FINAL_RELAY, LOW);
     State = ES_FINISHED;
     return;
@@ -369,6 +369,7 @@ void handle_active()
          sd_access_green;      
          Serial.println("SUCCESS");  
          State = ES_FINISHED;
+         delay(22000);
          digitalWrite(FINAL_RELAY, LOW);
        } else if (was_stupid_timestamp == 0 || new_time - was_stupid_timestamp > STUPID_TIMEOUT) {
          // Не посылать STUPID чаще чем раз в 5 минут.

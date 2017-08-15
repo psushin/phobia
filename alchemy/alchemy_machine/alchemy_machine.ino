@@ -16,8 +16,14 @@ const int B3Pin = 10;
 const int B4Pin = 11;
 const int WarmupPin = 12;
 const int MagicBallPin = 13;
+const int BubblesPin = A2;
+
+const int OperatorPin = A3;
 
 const int StartPin = 3;
+
+// Because sometimes magic ball misses the signal.
+const int SignalRetryCount = 5;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -89,7 +95,8 @@ TIngridientBuffer IngridientBuffer;
 enum EState {
   ES_STANDBY,
   ES_WARMUP,
-  ES_ACTIVE
+  ES_ACTIVE,
+  ES_FINAL
 };
 
 EState State;
@@ -108,11 +115,13 @@ void setup() {
   pinMode(WarmupPin, INPUT_PULLUP);
   pinMode(MagicBallPin, INPUT_PULLUP);
   pinMode(StartPin, INPUT_PULLUP);
+  pinMode(OperatorPin, INPUT_PULLUP);
   
   pinMode(SmokePowerPin, OUTPUT);
   pinMode(SmokeRunPin, OUTPUT);
   pinMode(PumpPin, OUTPUT);
-  pinMode(LockPin, OUTPUT);  
+  pinMode(LockPin, OUTPUT);     
+  pinMode(BubblesPin, OUTPUT);
   pinMode(BadOutPin, OUTPUT);
   pinMode(GoodOutPin, OUTPUT);
   
@@ -127,6 +136,7 @@ void Reset()
   digitalWrite(SmokeRunPin, HIGH);
   digitalWrite(PumpPin, HIGH);
   digitalWrite(LockPin, HIGH); 
+  digitalWrite(BubblesPin, HIGH);
   digitalWrite(BadOutPin, LOW);
   digitalWrite(GoodOutPin, LOW);  
   
@@ -139,38 +149,63 @@ void Reset()
 
 void RunStandby()
 {
-  int value = digitalRead(StartPin); 
-  if (value == LOW) {
-    Serial.println("Switch to warmup mode");
-    State = ES_WARMUP;
-    digitalWrite(SmokePowerPin, LOW);
+  if (digitalRead(StartPin) == LOW) {
+    delay(20);
+    if (digitalRead(StartPin) == LOW) {
+      Serial.println("Switch to warmup mode");
+      State = ES_WARMUP;
+      digitalWrite(SmokePowerPin, LOW);
+    }
+  }
+
+  if (IsOperatorPin()) {
+    DoAllMagic();
   }
 }
 
 void RunWarmup()
 {
  if (digitalRead(MagicBallPin) == LOW) {
-   Serial.println("Switch to active mode");
-   State = ES_ACTIVE;
- } 
+   delay(20);
+   if (digitalRead(MagicBallPin) == LOW) {
+     Serial.println("Switch to active mode");
+     State = ES_ACTIVE;
+   }
+ }
+
+ if (IsOperatorPin()) {
+  DoAllMagic();
+ }
 }
 
 int GetButton()
 {
   if (digitalRead(B1Pin) == HIGH) {
-    return 1;
+    delay(20);
+    if (digitalRead(B1Pin) == HIGH) {
+      return 1;
+    }
   }
   
   if (digitalRead(B2Pin) == HIGH) {
-    return 2;
+    delay(20);
+    if (digitalRead(B2Pin) == HIGH) {
+      return 2;
+    }
   }
   
   if (digitalRead(B3Pin) == HIGH) {
-    return 3;
+    delay(20);
+    if (digitalRead(B3Pin) == HIGH) {
+      return 3;
+    }
   }
   
   if (digitalRead(B4Pin) == HIGH) {
-    return 4;
+    delay(20);
+    if (digitalRead(B4Pin) == HIGH) {
+      return 4;
+    }
   }
   
   return 0;
@@ -193,8 +228,25 @@ bool HasWarmedUp()
   return false;
 }
 
+bool IsOperatorPin()
+{
+  if (digitalRead(OperatorPin) == LOW) {
+    delay(20);
+    if (digitalRead(OperatorPin) == LOW) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void DoAllMagic()
 {
+  Serial.println("Making bubbles");
+  digitalWrite(BubblesPin, LOW);
+  delay(10000);
+  digitalWrite(BubblesPin, HIGH);
+  
   // Switch pump.
   digitalWrite(PumpPin, LOW);
   delay(7000);
@@ -203,17 +255,33 @@ void DoAllMagic()
   if (HasWarmedUp()) {
     Serial.println("Smoke machine warmed up");
     digitalWrite(SmokeRunPin, LOW);
-    delay(3000);
+    delay(3500);
     digitalWrite(SmokeRunPin, HIGH);
   } else {
     Serial.println("Smoke machine didn't warmed up, skipping...");
   }
   
   digitalWrite(LockPin, LOW);
+
+  delay(10 * 1000);
+
+  for (int i = 0; i < SignalRetryCount; ++i) {
+    digitalWrite(GoodOutPin, HIGH);
+    delay(200);      
+    digitalWrite(GoodOutPin, LOW);
+    delay(200);
+  }
+
+  digitalWrite(GoodOutPin, HIGH);
 }
 
 void RunActive()
 {
+  if (IsOperatorPin()) {
+    DoAllMagic();
+    return;
+  }
+  
   int button = GetButton();
   if (button == 0) {
     return;
@@ -222,13 +290,6 @@ void RunActive()
   IngridientBuffer.AddValue(button);
   if (IngridientBuffer.CheckIngridients()) {
     DoAllMagic();
-    
-    delay(10 * 1000);
-    
-    digitalWrite(GoodOutPin, HIGH);      
-    delay(20000);
-
-    Reset();
   } else if (IngridientBuffer.GetTotalCount() % 10 == 0) {
     digitalWrite(BadOutPin, HIGH);      
     delay(100);
@@ -251,6 +312,10 @@ void loop() {
    
    case ES_ACTIVE:
      RunActive();
+     break;
+
+   case ES_FINAL:
+     // Do nothing.
      break;
  }; 
 

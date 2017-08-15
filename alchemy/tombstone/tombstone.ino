@@ -214,12 +214,16 @@ void DoWaitGargoil()
     delay(500);
     sd_access_yellow;
 
-  /*
+/*
   #if (!DEBUG)
     delay(3000);
     mp3_stop();
-  #endif  */
-    
+
+    mp3_play(3);
+    delay(4000);
+    mp3_stop();
+  #endif  
+  */  
   }
 }
 
@@ -281,7 +285,7 @@ void DoWaitCrystall()
         if (SUCCESS) { //Если карточка принята
 #if (DEBUG)
           Serial.println();
-          Serial.println("Card success");
+          Serial.println("Card success");          
 #endif
           sd_access_green;
           ext_out_on;                   // подать сигнал активности плате второго кристала
@@ -290,6 +294,10 @@ void DoWaitCrystall()
           myservo1.write(91);         // скорость вращения сервоприводов >90 вправо <90 влево
           myservo2.attach(SERVO_S2);  // подключить сервопривод
           myservo2.write(89);         // скорость вращения сервоприводов >90 вправо <90 влево
+
+#if (!DEBUG)          
+      mp3_play(2);
+#endif
           delay(30000);
           myservo1.detach();          //отключить сервопривод
           myservo2.detach();
@@ -326,6 +334,7 @@ void setup()
 
   pinMode(SD_R, OUTPUT);
   pinMode(SD_G, OUTPUT);
+  
   sd_access_yellow;
 
   pinMode(PRG, INPUT); // настроить как вход
@@ -350,7 +359,7 @@ void setup()
 #if (!DEBUG)
   mp3_set_serial (Serial);    //set Serial for DFPlayer-mini mp3 module 
   delay (100);
-  mp3_set_volume(30);
+  mp3_set_volume(40);
 
   delay(500);
   mp3_play(1);
