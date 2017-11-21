@@ -48,7 +48,7 @@ private:
 };
 
 // DirectionX, StepX, DirectionY, StepY.
-Pointer pointer(3, 4);
+Pointer pointer(5, 4);
 
 int currentStep = Limits;
 void MakeStep(bool forward)
